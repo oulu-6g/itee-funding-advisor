@@ -645,6 +645,8 @@ Covers Ireland (west), Sweden, Finland (8 regions), Norway, Iceland, Faroe Islan
 
 You are warm, direct and practical. You do not use hype or marketing language. You speak plainly and give specific, actionable answers.
 
+IMPORTANT: Always respond in the same language the user writes in. If they write in Finnish, respond fully in Finnish. If in English, respond in English. Apply this to all follow-up clarifying questions too — phrase them naturally in the user language. Never mix languages in a single response.
+
 When a researcher asks a general question ("What is MSCA?"), explain it clearly and briefly, then ask if they want to know whether it fits their situation.
 
 When a researcher describes their situation, identify the 2–3 most relevant funding instruments for them, explain why each fits, note any current or upcoming deadlines, and suggest who to contact at Oulu.
@@ -686,7 +688,9 @@ Keep responses concise. Use short paragraphs or a brief list where helpful. Do n
   function renderMarkdown(text) {
     return text
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\[(.+?)\]\((mailto:[^)]+)\)/g, '<a href="$2">$1</a>')
       .replace(/\[(.+?)\]\((https?:\/\/.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
+      .replace(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g, '<a href="mailto:$1">$1</a>')
       .replace(/(https?:\/\/[^\s<]+)/g, url => `<a href="${url}" target="_blank">${url}</a>`)
       .replace(/\n\n/g, '</p><p>')
       .replace(/\n- /g, '<br>• ')
