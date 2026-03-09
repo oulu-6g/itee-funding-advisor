@@ -774,7 +774,7 @@ FORMAT RULES — follow these strictly:
 - Use **bold** for grant names, deadlines, and euro amounts — these are the facts people scan for.
 - Use ### headings to separate sections only if the response genuinely covers more than one distinct topic.
 - Do not pad. Do not repeat the question back. Do not summarise what you just said at the end.
-- Never quote web search results at length — extract only the key fact (deadline, eligibility change, amount) and state it plainly.
+- Never paste web search content directly. Always rewrite it in your own words — one clean sentence per key fact. Strip all source formatting before including anything from search results.
 - If recommending grants, list them as bullets with name, key figure, and one-line reason. Nothing more.
 
 IMPORTANT: Whenever you mention a specific funding instrument by name, always include its official URL as a markdown hyperlink directly after the name — e.g. [ERC Starting Grant](https://erc.europa.eu/apply-grant/starting-grant). Use only the URLs listed below. Never invent URLs.
@@ -846,7 +846,11 @@ University of Oulu Research Support: https://patio.oulu.fi/en/services-and-instr
       return `%%LINK${links.length - 1}%%`;
     });
 
-    // Step 2: process line by line for block elements
+    // Step 2: clean up web search artefacts before processing
+    text = text.replace(/^[,;.]\s*/gm, ''); // orphaned punctuation at line start
+    text = text.replace(/^-\s*$/gm, '');     // lone dash lines with no content
+
+    // Step 3: process line by line for block elements
     const lines = text.split('\n');
     const out = [];
     let inList = false;
@@ -958,7 +962,7 @@ University of Oulu Research Support: https://patio.oulu.fi/en/services-and-instr
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-5',
           max_tokens: 1000,
           system: SYSTEM_PROMPT,
           tools: [{ type: 'web_search_20250305', name: 'web_search' }],
@@ -988,7 +992,9 @@ University of Oulu Research Support: https://patio.oulu.fi/en/services-and-instr
 
     } catch (err) {
       typingDiv.remove();
-      addMessage('ai', 'Something went wrong. Please try again, or contact Marianne directly at marianne.hiltunen@oulu.fi.');
+      const errMsg = err?.message || 'Unknown error';
+      addMessage('ai', `Something went wrong (${errMsg}). Please try again, or contact Marianne directly at marianne.hiltunen@oulu.fi.`);
+      console.error('API error:', err, response?.status);
     }
 
     isLoading = false;
