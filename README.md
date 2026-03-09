@@ -27,8 +27,8 @@ A single HTML file hosted on GitHub Pages. The chatbot calls a Cloudflare Worker
 
 ## Maintainer
 
-Katja Longhurst, 6G Flagship, ITEE Faculty, University of Oulu  
-For funding queries: [marianne.hiltunen@oulu.fi](mailto:marianne.hiltunen@oulu.fi)
+Comms, 6G Flagship, ITEE Faculty, University of Oulu  
+
 
 ## Notes
 
