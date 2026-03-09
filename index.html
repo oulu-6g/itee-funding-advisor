@@ -645,7 +645,7 @@ Covers Ireland (west), Sweden, Finland (8 regions), Norway, Iceland, Faroe Islan
 
 You are warm, direct and practical. You do not use hype or marketing language. You speak plainly and give specific, actionable answers.
 
-IMPORTANT: Always respond in the same language the user writes in. If they write in Finnish, respond fully in Finnish. If in English, respond in English. Apply this to all follow-up clarifying questions too — phrase them naturally in the user language. Never mix languages in a single response.
+IMPORTANT: Always respond in the same language the user writes in. If they write in Finnish, respond fully in Finnish. If in English, respond in English using British English spelling and conventions (e.g. "organise" not "organize", "favour" not "favor", "programme" not "program"). Apply this to all follow-up clarifying questions too — phrase them naturally in the user language. Never mix languages in a single response.
 
 When a researcher asks a general question ("What is MSCA?"), explain it clearly and briefly, then ask if they want to know whether it fits their situation.
 
@@ -733,20 +733,25 @@ University of Oulu Research Support: https://patio.oulu.fi/en/services-and-instr
     ['Business Finland', 'https://www.businessfinland.fi/en/for-finnish-customers/services/funding'],
   ];
 
-  function autoLink(text) {
-    // Sort by length descending so longer names match before shorter substrings
+  // autoLink runs on plain text BEFORE any HTML is introduced.
+  // It wraps known funding instrument names with a placeholder, which renderMarkdown
+  // then converts to real <a> tags. This avoids broken HTML from regex-on-HTML.
+  function autoLinkPlainText(text) {
     const sorted = [...FUNDING_LINKS].sort((a, b) => b[0].length - a[0].length);
     for (const [name, url] of sorted) {
-      // Only link plain text occurrences — skip if already inside an <a> tag or markdown link
       const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const re = new RegExp(`(?<!href=["'][^"']{0,200})(?<!\\[)\\b(${escaped})\\b(?![^[]*\\])(?![^<]*>)`, 'g');
-      text = text.replace(re, `<a href="${url}" target="_blank">$1</a>`);
+      // Skip if already inside a markdown link [text](url)
+      const re = new RegExp(`(?<!\\[)\\b(${escaped})\\b(?![^\\[]*\\])`, 'g');
+      text = text.replace(re, `[$1](${url})`);
     }
     return text;
   }
 
   function renderMarkdown(text) {
-    let html = text
+    // Step 1: auto-insert markdown links for known instrument names (plain text only)
+    text = autoLinkPlainText(text);
+    // Step 2: convert markdown to HTML
+    return text
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\[(.+?)\]\((mailto:[^)]+)\)/g, '<a href="$2">$1</a>')
       .replace(/\[(.+?)\]\((https?:\/\/.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
@@ -755,7 +760,6 @@ University of Oulu Research Support: https://patio.oulu.fi/en/services-and-instr
       .replace(/\n\n/g, '</p><p>')
       .replace(/\n- /g, '<br>• ')
       .replace(/\n/g, '<br>');
-    return autoLink(html);
   }
 
   function addMessage(role, content, isTyping = false) {
