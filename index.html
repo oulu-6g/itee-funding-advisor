@@ -958,24 +958,66 @@ University of Oulu Research Support: https://patio.oulu.fi/en/services-and-instr
     const { div: typingDiv } = addMessage('ai', '', true);
 
     try {
-      const response = await fetch('https://itee-funding-proxy.katjalonghurst.workers.dev', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 1000,
-          system: SYSTEM_PROMPT,
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages: history
-        })
-      });
+      // Build messages for this call
+      let messages = [...history];
+      let usedSearch = false;
+      let replyText = '';
+      let attempts = 0;
 
-      const data = await response.json();
+      while (attempts < 5) {
+        attempts++;
+        const response = await fetch('https://itee-funding-proxy.katjalonghurst.workers.dev', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-5',
+            max_tokens: 1500,
+            system: SYSTEM_PROMPT,
+            tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+            messages: messages
+          })
+        });
+
+        if (!response.ok) {
+          const errBody = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errBody.slice(0, 200)}`);
+        }
+
+        const data = await response.json();
+
+        // Check if this turn used web search
+        if (data.content?.some(b => b.type === 'tool_use' && b.name === 'web_search')) {
+          usedSearch = true;
+        }
+
+        // Collect any text from this turn
+        const textBlocks = data.content?.filter(b => b.type === 'text') || [];
+        const turnText = textBlocks.map(b => b.text).join('\n').trim();
+        if (turnText) replyText = turnText;
+
+        // If model is done, break
+        if (data.stop_reason === 'end_turn' || data.stop_reason === 'max_tokens') break;
+
+        // If model used a tool, append its response to messages and continue
+        if (data.stop_reason === 'tool_use') {
+          // Add assistant turn with the tool use blocks
+          messages.push({ role: 'assistant', content: data.content });
+          // Add tool results (web_search handles itself server-side; we just need to continue)
+          // Add a user turn acknowledging tool use to continue the loop
+          const toolUseBlocks = data.content.filter(b => b.type === 'tool_use');
+          const toolResults = toolUseBlocks.map(b => ({
+            type: 'tool_result',
+            tool_use_id: b.id,
+            content: 'Search completed.'
+          }));
+          messages.push({ role: 'user', content: toolResults });
+          continue;
+        }
+
+        break;
+      }
+
       typingDiv.remove();
-
-      const usedSearch = data.content?.some(b => b.type === 'tool_use' && b.name === 'web_search');
-      const textBlocks = data.content?.filter(b => b.type === 'text') || [];
-      const replyText = textBlocks.map(b => b.text).join('\n').trim();
 
       if (replyText) {
         const { bubble } = addMessage('ai', '');
@@ -988,13 +1030,15 @@ University of Oulu Research Support: https://patio.oulu.fi/en/services-and-instr
           bubble.innerHTML = `<p>${renderMarkdown(replyText)}</p>`;
         }
         history.push({ role: 'assistant', content: replyText });
+      } else {
+        addMessage('ai', 'I could not find a clear answer. Please try rephrasing, or contact Marianne at marianne.hiltunen@oulu.fi.');
       }
 
     } catch (err) {
       typingDiv.remove();
       const errMsg = err?.message || 'Unknown error';
       addMessage('ai', `Something went wrong (${errMsg}). Please try again, or contact Marianne directly at marianne.hiltunen@oulu.fi.`);
-      console.error('API error:', err, response?.status);
+      console.error('API error:', err);
     }
 
     isLoading = false;
